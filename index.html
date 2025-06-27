@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ニキシー管風時計</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cutive+Mono&family=Orbitron:wght@400..900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Cutive Mono', monospace;
+            background-color: #2a2626;
+            color: #f5a623;
+            display: flex;
+            flex-direction: column; /* 上下に並べる */
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow-x: auto;
+            overflow-y: hidden;
+            position: relative;
+            padding: 20px 0;
+        }
+
+        body::before { /* 背景ノイズ */
+            content: "";
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: linear-gradient(45deg, rgba(0,0,0,0.02) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.02) 75%, rgba(0,0,0,0.02)),
+                              linear-gradient(45deg, rgba(0,0,0,0.02) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.02) 75%, rgba(0,0,0,0.02));
+            background-size: 4px 4px; background-position: 0 0, 2px 2px;
+            opacity: 0.3; pointer-events: none; z-index: -1;
+        }
+        body::after { /* ビネット効果 */
+            content: "";
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            box-shadow: inset 0 0 120px rgba(0,0,0,0.5);
+            pointer-events: none; z-index: -1;
+        }
+
+        /* --- 年月日表示用ニキシー管コンテナ --- */
+        .date-nixie-container {
+            display: flex;
+            align-items: flex-end;
+            margin-bottom: 30px; /* 時計との間隔を少し広げる */
+        }
+
+        /* 年月日表示用の管スタイル */
+        .date-nixie-container .tube {
+            background: radial-gradient(ellipse at center, rgba(15,15,15,0.8) 0%, rgba(5,5,5,0.95) 70%);
+            border: 1px solid #0a0a0a;
+            border-top: 2px solid rgba(255,255,255,0.03);
+            border-bottom: 2px solid rgba(0,0,0,0.6);
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin: 0 2px; /* 基本マージンを小さく */
+            text-align: center;
+            min-width: 48px;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.85), inset 0 6px 15px rgba(0,0,0,0.6), 0 6px 15px rgba(0,0,0,0.65);
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        /* 月と日の管の左側に少し大きめのマージンを追加して区切りとする */
+        .date-nixie-container .tube.month-digit,
+        .date-nixie-container .tube.day-digit {
+            margin-left: 10px; /* YY MM DD の MM と DD の前のスペース */
+        }
+         .date-nixie-container .tube.month-digit:first-child, /* 月の最初の桁 */
+         .date-nixie-container .tube.day-digit:first-child { /* 日の最初の桁 */
+             margin-left: 12px; /* グループ間のスペースを少し広めに */
+         }
+
+
+        .date-nixie-container .tube::before {
+            content: ''; position: absolute; top: 5px; left: 10%; width: 80%; height: 8px;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.0) 100%);
+            border-radius: 8px / 4px; opacity: 0.6; z-index: 5;
+        }
+        .date-nixie-container .digit-background span {
+            font-size: 2.8rem;
+            color: rgba(245, 166, 35, 0.03);
+        }
+        .date-nixie-container .current-digit {
+            font-size: 2.8rem;
+            text-shadow: 0 0 2px rgba(245,166,35,0.7), 0 0 6px rgba(245,166,35,0.6), 0 0 12px rgba(245,166,35,0.5), 0 0 20px rgba(255,100,0,0.4), 0 0 30px rgba(255,0,0,0.2);
+        }
+        /* .date-nixie-container .separator.date-separator スタイルは不要になったので削除 */
+
+
+        /* --- 時刻表示用ニキシー管コンテナ --- */
+        .clock-container {
+            display: flex;
+            align-items: flex-end;
+            padding: 10px;
+        }
+        .clock-container .tube {
+            background: radial-gradient(ellipse at center, rgba(15,15,15,0.8) 0%, rgba(5,5,5,0.95) 70%);
+            border: 1px solid #0a0a0a;
+            border-top: 2px solid rgba(255,255,255,0.03);
+            border-bottom: 2px solid rgba(0,0,0,0.6);
+            border-radius: 14px;
+            padding: 18px 20px;
+            margin: 0 6px;
+            text-align: center;
+            min-width: 70px;
+            box-shadow: inset 0 0 14px rgba(0,0,0,0.85), inset 0 10px 20px rgba(0,0,0,0.6), 0 10px 22px rgba(0,0,0,0.65);
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .clock-container .tube::before {
+            content: ''; position: absolute; top: 7px; left: 10%; width: 80%; height: 12px;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.0) 100%);
+            border-radius: 12px / 6px; opacity: 0.7; z-index: 5;
+        }
+        .clock-container .digit-background span {
+            font-size: 4.2rem;
+            color: rgba(245, 166, 35, 0.04);
+        }
+        .clock-container .current-digit {
+            font-size: 4.2rem;
+            text-shadow: 0 0 4px rgba(245,166,35,0.8), 0 0 12px rgba(245,166,35,0.7), 0 0 22px rgba(245,166,35,0.6), 0 0 35px rgba(255,100,0,0.5), 0 0 60px rgba(255,0,0,0.3);
+        }
+        .clock-container .separator {
+            font-size: 3.8rem;
+            padding-bottom: 18px;
+            margin: 0 6px;
+            animation: blink 1.2s infinite;
+        }
+        .clock-container .separator.ms-separator {
+            font-size: 3.0rem;
+            padding-bottom: 18px;
+        }
+
+        /* 共通スタイル */
+        .tube {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        .digit-background {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; justify-content: center; align-items: center;
+            pointer-events: none; z-index: 1;
+        }
+        .digit-background span {
+            position: absolute; line-height: 1; font-weight: normal;
+        }
+        .current-digit {
+            font-weight: normal; line-height: 1; color: #f5a623;
+            transition: text-shadow 0.2s ease-in-out, color 0.2s ease-in-out;
+            position: relative; z-index: 10;
+        }
+        .separator {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: bold;
+            color: #e88d13; text-shadow: 0 0 3px #f5a623, 0 0 8px #f5a623;
+            align-self: center;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; text-shadow: 0 0 3px #f5a623, 0 0 8px #f5a623, 0 0 12px #f5a623; }
+            50% { opacity: 0.4; text-shadow: 0 0 3px #f5a623, 0 0 5px #f5a623; }
+        }
+
+        /* レスポンシブ調整 */
+        @media (max-width: 1200px) {
+            .date-nixie-container .tube { min-width: 42px; padding: 8px 10px; margin: 0 2px; }
+            .date-nixie-container .tube.month-digit:first-child,
+            .date-nixie-container .tube.day-digit:first-child { margin-left: 10px; }
+            .date-nixie-container .current-digit, .date-nixie-container .digit-background span { font-size: 2.5rem; }
+            
+            .clock-container .tube { min-width: 60px; padding: 15px 18px; margin: 0 5px; }
+            .clock-container .current-digit, .clock-container .digit-background span { font-size: 3.8rem; }
+            .clock-container .separator { font-size: 3.5rem; padding-bottom: 15px; }
+            .clock-container .separator.ms-separator { font-size: 2.8rem; padding-bottom: 15px;}
+        }
+        @media (max-width: 992px) {
+            .date-nixie-container .tube { min-width: 38px; padding: 7px 9px; margin: 0 1px; }
+            .date-nixie-container .tube.month-digit:first-child,
+            .date-nixie-container .tube.day-digit:first-child { margin-left: 8px; }
+            .date-nixie-container .current-digit, .date-nixie-container .digit-background span { font-size: 2.2rem; }
+
+            .clock-container .tube { min-width: 55px; padding: 12px 15px; margin: 0 4px; }
+            .clock-container .current-digit, .clock-container .digit-background span { font-size: 3.5rem; }
+            .clock-container .separator { font-size: 3.2rem; padding-bottom: 12px; }
+            .clock-container .separator.ms-separator { font-size: 2.6rem; padding-bottom: 12px;}
+        }
+
+        @media (max-width: 768px) {
+            body{ padding: 15px 0;}
+            .date-nixie-container, .clock-container {
+                flex-wrap: wrap;
+                justify-content: center;
+                padding: 5px;
+            }
+            .date-nixie-container { margin-bottom: 20px; }
+            .date-nixie-container .tube { min-width: 35px; padding: 6px 8px; margin: 3px 1px; }
+             .date-nixie-container .tube.month-digit:first-child,
+            .date-nixie-container .tube.day-digit:first-child { margin-left: 6px; }
+            .date-nixie-container .current-digit, .date-nixie-container .digit-background span { font-size: 2rem; }
+
+            .clock-container .tube { min-width: 50px; padding: 10px 12px; margin: 4px 3px; }
+            .clock-container .current-digit, .clock-container .digit-background span { font-size: 3rem; }
+            .clock-container .separator { font-size: 2.8rem; padding-bottom: 10px; }
+            .clock-container .separator.ms-separator { font-size: 2.2rem; padding-bottom: 10px;}
+        }
+         @media (max-width: 480px) {
+            .date-nixie-container { margin-bottom: 15px; }
+            .date-nixie-container .tube { min-width: 30px; padding: 5px 6px; margin: 2px 1px; }
+            .date-nixie-container .tube.month-digit:first-child,
+            .date-nixie-container .tube.day-digit:first-child { margin-left: 5px; }
+            .date-nixie-container .current-digit, .date-nixie-container .digit-background span { font-size: 1.7rem; }
+
+            .clock-container .tube { min-width: 42px; padding: 8px 10px; margin: 3px 2px; }
+            .clock-container .current-digit, .clock-container .digit-background span { font-size: 2.5rem; }
+            .clock-container .separator { font-size: 2.2rem; padding-bottom: 8px; }
+            .clock-container .separator.ms-separator { font-size: 1.8rem; padding-bottom: 8px;}
+        }
+    </style>
+</head>
+<body>
+    <div class="date-nixie-container">
+        <div class="tube" id="year_tens"><div class="digit-background"><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span></div><span class="current-digit">2</span></div>
+        <div class="tube" id="year_ones"><div class="digit-background"><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span></div><span class="current-digit">5</span></div>
+        <div class="tube month-digit" id="month_tens"><div class="digit-background"><span>0</span><span>1</span></div><span class="current-digit">0</span></div>
+        <div class="tube" id="month_ones"><div class="digit-background"><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span></div><span class="current-digit">6</span></div>
+        <div class="tube day-digit" id="day_tens"><div class="digit-background"><span>0</span><span>1</span><span>2</span><span>3</span></div><span class="current-digit">0</span></div>
+        <div class="tube" id="day_ones"><div class="digit-background"><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span></div><span class="current-digit">1</span></div>
+    </div>
+
+    <div class="clock-container">
+        <div class="tube" id="hours-tens"><div class="digit-background"><span>0</span><span>1</span><span>2</span></div><span class="current-digit">0</span></div>
+        <div class="tube" id="hours-ones"><div class="digit-background"><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span></div><span class="current-digit">0</span></div>
+        <div class="separator" id="sep1">:</div>
+        <div class="tube" id="minutes-tens"><div class="digit-background"><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div><span class="current-digit">0</span></div>
+        <div class="tube" id="minutes-ones"><div class="digit-background"><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span></div><span class="current-digit">0</span></div>
+        <div class="separator" id="sep2">:</div>
+        <div class="tube" id="seconds-tens"><div class="digit-background"><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div><span class="current-digit">0</span></div>
+        <div class="tube" id="seconds-ones"><div class="digit-background"><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span></div><span class="current-digit">0</span></div>
+        <div class="separator ms-separator" id="sep3">.</div>
+        <div class="tube" id="ms-hundreds"><div class="digit-background"><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span></div><span class="current-digit">0</span></div>
+        <div class="tube" id="ms-tens"><div class="digit-background"><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span></div><span class="current-digit">0</span></div>
+        <div class="tube" id="ms-ones"><div class="digit-background"><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span></div><span class="current-digit">0</span></div>
+    </div>
+
+    <script>
+        // --- DOM要素取得 ---
+        // 年月日
+        const yearTensEl = document.getElementById('year_tens').querySelector('.current-digit');
+        const yearOnesEl = document.getElementById('year_ones').querySelector('.current-digit');
+        const monthTensEl = document.getElementById('month_tens').querySelector('.current-digit');
+        const monthOnesEl = document.getElementById('month_ones').querySelector('.current-digit');
+        const dayTensEl = document.getElementById('day_tens').querySelector('.current-digit');
+        const dayOnesEl = document.getElementById('day_ones').querySelector('.current-digit');
+
+        // 時刻 (変更なし)
+        const hoursTensEl = document.getElementById('hours-tens').querySelector('.current-digit');
+        const hoursOnesEl = document.getElementById('hours-ones').querySelector('.current-digit');
+        const minutesTensEl = document.getElementById('minutes-tens').querySelector('.current-digit');
+        const minutesOnesEl = document.getElementById('minutes-ones').querySelector('.current-digit');
+        const secondsTensEl = document.getElementById('seconds-tens').querySelector('.current-digit');
+        const secondsOnesEl = document.getElementById('seconds-ones').querySelector('.current-digit');
+        const msHundredsEl = document.getElementById('ms-hundreds').querySelector('.current-digit');
+        const msTensEl = document.getElementById('ms-tens').querySelector('.current-digit');
+        const msOnesEl = document.getElementById('ms-ones').querySelector('.current-digit');
+
+        let lastDateStr = "";
+
+        function updateClocks() {
+            const now = new Date();
+
+            // --- 年月日の更新 ---
+            const yearYY = String(now.getFullYear()).slice(-2); // 年の下2桁を取得
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const currentDateStr = `${yearYY}${month}${day}`;
+
+            if (currentDateStr !== lastDateStr) {
+                if(yearTensEl.textContent !== yearYY[0]) yearTensEl.textContent = yearYY[0];
+                if(yearOnesEl.textContent !== yearYY[1]) yearOnesEl.textContent = yearYY[1];
+
+                if(monthTensEl.textContent !== month[0]) monthTensEl.textContent = month[0];
+                if(monthOnesEl.textContent !== month[1]) monthOnesEl.textContent = month[1];
+
+                if(dayTensEl.textContent !== day[0]) dayTensEl.textContent = day[0];
+                if(dayOnesEl.textContent !== day[1]) dayOnesEl.textContent = day[1];
+                lastDateStr = currentDateStr;
+            }
+
+            // --- 時刻の更新 (変更なし) ---
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            const milliseconds = String(now.getMilliseconds()).padStart(3, '0');
+
+            if (hoursTensEl.textContent !== hours[0]) hoursTensEl.textContent = hours[0];
+            if (hoursOnesEl.textContent !== hours[1]) hoursOnesEl.textContent = hours[1];
+            if (minutesTensEl.textContent !== minutes[0]) minutesTensEl.textContent = minutes[0];
+            if (minutesOnesEl.textContent !== minutes[1]) minutesOnesEl.textContent = minutes[1];
+            if (secondsTensEl.textContent !== seconds[0]) secondsTensEl.textContent = seconds[0];
+            if (secondsOnesEl.textContent !== seconds[1]) secondsOnesEl.textContent = seconds[1];
+            if (msHundredsEl.textContent !== milliseconds[0]) msHundredsEl.textContent = milliseconds[0];
+            if (msTensEl.textContent !== milliseconds[1]) msTensEl.textContent = milliseconds[1];
+            if (msOnesEl.textContent !== milliseconds[2]) msOnesEl.textContent = milliseconds[2];
+        }
+
+        setInterval(updateClocks, 50);
+        updateClocks();
+    </script>
+</body>
+</html>
